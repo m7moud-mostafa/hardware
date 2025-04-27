@@ -51,7 +51,7 @@ class SerialBaseDriver(BaseDriver):
                         BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
             except termios.error as e:
                 # log it and recover: maybe reconnect or just clear the counters
-                self.log_warning(f"Buffer flush failed: {e}, reconnecting...", extra={'green': False})
+                self.log_warning(f"Buffer flush failed: {e}, reconnecting...")
                 self.serial_conn.close()
                 self._try_to_connect()
 
