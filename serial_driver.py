@@ -44,10 +44,12 @@ class SerialBaseDriver(BaseDriver):
                 if self.operation == "send":
                     if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                         self.serial_conn.reset_input_buffer()
+                        self.log_info("TX Buffer Cleaned.......")
                         BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
                 else:
                     if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                         self.serial_conn.reset_output_buffer()
+                        self.log_info("RX Buffer Cleaned.......")
                         BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
             except termios.error as e:
                 # log it and recover: maybe reconnect or just clear the counters
