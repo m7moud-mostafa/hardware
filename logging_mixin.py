@@ -33,15 +33,21 @@ class LoggingMixin:
         class ColoredFormatter(logging.Formatter):
             COLORS = {
                 'DEBUG': '\033[36m',     # Cyan
-                'INFO': '\033[32m',      # Green
+                'INFO': '\033[37m',      # White (normal INFO)
                 'WARNING': '\033[33m',   # Yellow
                 'ERROR': '\033[31m',     # Red
                 'CRITICAL': '\033[41m',  # Red background
+                'SUCCESS': '\033[32m',   # Green (special INFOs)
                 'RESET': '\033[0m'
             }
 
             def format(self, record):
-                color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+                # Use 'SUCCESS' color if the record has 'green' attribute set to True
+                if hasattr(record, 'green') and record.green:
+                    color = self.COLORS['SUCCESS']
+                else:
+                    color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+                
                 message = super().format(record)
                 return f"{color}{message}{self.COLORS['RESET']}"
 
@@ -75,9 +81,18 @@ class LoggingMixin:
             self.logger.addHandler(file_handler)
 
     def log_instance_created(self):
-        self.logger.info(f"Instance created: channel={self.msgName}, protocol={self.__class__.__name__}, baudrate:{self.baudrate}")
-        self.logger.info(f"Instance message: {self.msgName}, status={self._BaseDriver__isRunning}")
-        self.logger.info(f"Running status: {self._BaseDriver__isRunning}")
+        self.logger.info(
+            f"Instance created: channel={self.msgName}, protocol={self.__class__.__name__}, baudrate:{self.baudrate}",
+            extra={'green': True}
+        )
+        self.logger.info(
+            f"Instance message: {self.msgName}, status={self._BaseDriver__isRunning}",
+            extra={'green': True}
+        )
+        self.logger.info(
+            f"Running status: {self._BaseDriver__isRunning}",
+            extra={'green': True}
+        )
 
     def log_status_change(self, status):
         self.logger.info(f"Status change: channel={self.msgName}, status={status}")
@@ -118,7 +133,7 @@ class LoggingMixin:
         self.logger.info(f"Operation [{self.operation}] stopped for channel={self.msgName} numOfMsgs={self.numOfMsgs}")
 
     def log_connected(self, port):
-        self.logger.info(f"Connected to port={port} for channel={self.msgName}")
+        self.logger.info(f"Connected to port={port} for channel={self.msgName}", extra={'green': True})
 
     def log_info(self, info):
         self.logger.info(info)
