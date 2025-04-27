@@ -41,7 +41,7 @@ class SerialBaseDriver(BaseDriver):
         if opretion == "send":
                 if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                     self.serial_conn.reset_input_buffer()
-                    BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"]= 0
+                    BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
         elif opretion == "receive":
                 if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                     self.serial_conn.reset_output_buffer()

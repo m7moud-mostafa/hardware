@@ -20,10 +20,6 @@ class LoggingMixin:
         Initialize the LoggingMixin.
 
         Sets up the logger with handlers for console and file logging.
-
-        Args:
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
         """
         super().__init__(*args, **kwargs)
         logger_name = f'hardware.{self.__class__.__name__}.{self.msgName}.server'
@@ -31,9 +27,27 @@ class LoggingMixin:
         self.logger.setLevel(logging.DEBUG)
 
         self.log_file = os.path.join(os.getcwd(), 'hardware.log')
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-        # Check for existing console handler (StreamHandler not FileHandler)
+        # Define ColoredFormatter for console output
+        class ColoredFormatter(logging.Formatter):
+            COLORS = {
+                'DEBUG': '\033[36m',     # Cyan
+                'INFO': '\033[32m',      # Green
+                'WARNING': '\033[33m',   # Yellow
+                'ERROR': '\033[31m',     # Red
+                'CRITICAL': '\033[41m',  # Red background
+                'RESET': '\033[0m'
+            }
+
+            def format(self, record):
+                color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+                message = super().format(record)
+                return f"{color}{message}{self.COLORS['RESET']}"
+
+        console_formatter = ColoredFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+        # Check for existing console handler (StreamHandler but not FileHandler)
         console_handler = None
         for handler in self.logger.handlers:
             if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
@@ -44,7 +58,7 @@ class LoggingMixin:
         if not console_handler:
             console_handler = logging.StreamHandler(sys.stderr)
             console_handler.setLevel(logging.INFO)
-            console_handler.setFormatter(formatter)
+            console_handler.setFormatter(console_formatter)
             self.logger.addHandler(console_handler)
 
         # Check for existing file handler
@@ -57,7 +71,7 @@ class LoggingMixin:
         if not file_handler:
             file_handler = logging.FileHandler(self.log_file, mode='a')
             file_handler.setLevel(logging.DEBUG)
-            file_handler.setFormatter(formatter)
+            file_handler.setFormatter(file_formatter)
             self.logger.addHandler(file_handler)
 
     def log_instance_created(self):

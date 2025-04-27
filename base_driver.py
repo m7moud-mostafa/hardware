@@ -80,7 +80,7 @@ class BaseDriver(LoggingMixin, ABC):
 
     def _try_to_connect(self):
         """Keep trying to connect until successful, with a maximum retry count."""
-        max_retries = 60 * 3 / 2 
+        max_retries = 100
         retries = 0
         while retries < max_retries:
             status = self.connect()
