@@ -7,7 +7,6 @@ Email: mah2002moud@gmail.com
 """
 
 import serial
-import termios
 from hardware.base_driver import BaseDriver
 import time
 
@@ -40,22 +39,16 @@ class SerialBaseDriver(BaseDriver):
 
     def clean_buffer(self):
         if self.serial_conn and self.serial_conn.is_open:
-            try:
-                if self.operation == "send":
-                    if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
-                        self.serial_conn.reset_input_buffer()
-                        self.log_info("TX Buffer Cleaned.......")
-                        BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
-                else:
-                    if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
-                        self.serial_conn.reset_output_buffer()
-                        self.log_info("RX Buffer Cleaned.......")
-                        BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
-            except termios.error as e:
-                # log it and recover: maybe reconnect or just clear the counters
-                self.log_warning(f"Buffer flush failed: {e}, reconnecting...")
-                self.serial_conn.close()
-                self._try_to_connect()
+            if self.operation == "send":
+                if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
+                    self.serial_conn.reset_input_buffer()
+                    self.log_info("TX Buffer Cleaned.......")
+                    BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
+            else:
+                if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
+                    self.serial_conn.reset_output_buffer()
+                    self.log_info("RX Buffer Cleaned.......")
+                    BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
 
     @property
     def msgIDLength(self):
@@ -96,7 +89,7 @@ class SerialSender(SerialBaseDriver):
                     BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] += len(payload)
                     self.log_sent(data)
                     return 0
-                except serial.SerialException as e:
+                except Exception as e:
                     self.log_error(f"Error: {e}, Retrying")
                     self.serial_conn.close()
                     self._try_to_connect()
