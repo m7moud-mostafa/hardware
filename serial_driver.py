@@ -7,6 +7,7 @@ Email: mah2002moud@gmail.com
 """
 
 import serial
+import termios
 from hardware.base_driver import BaseDriver
 import time
 
@@ -37,16 +38,22 @@ class SerialBaseDriver(BaseDriver):
             self.serial_conn.close()
             self.stop()
 
-    def clean_buffer(self, opretion):
-        if opretion == "send":
-                if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
-                    self.serial_conn.reset_input_buffer()
-                    BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
-        elif opretion == "receive":
-                if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
-                    self.serial_conn.reset_output_buffer()
-                    BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
-
+    def clean_buffer(self):
+        if self.serial_conn and self.serial_conn.is_open:
+            try:
+                if self.operation == "send":
+                    if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
+                        self.serial_conn.reset_input_buffer()
+                        BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
+                else:
+                    if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
+                        self.serial_conn.reset_output_buffer()
+                        BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
+            except termios.error as e:
+                # log it and recover: maybe reconnect or just clear the counters
+                self.log_warning(f"Buffer flush failed: {e}, reconnecting...", extra={'green': False})
+                self.serial_conn.close()
+                self._try_to_connect()
 
     @property
     def msgIDLength(self):
@@ -82,7 +89,7 @@ class SerialSender(SerialBaseDriver):
             if self.serial_conn and self.serial_conn.is_open:
                 try:
                     payload = (self.msgID.to_bytes(self.msgIDLength, 'big') + data) if self.msgIDLength else data
-                    self.clean_buffer(self.operation)
+                    self.clean_buffer()
                     self.serial_conn.write(payload)
                     BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] += len(payload)
                     self.log_sent(data)
@@ -128,7 +135,7 @@ class SerialReceiver(SerialBaseDriver):
                 BaseDriver.channelsOperationsInfo[self.channel][self.operation][self.msgID] += 1
                 self.log_received(self.msgID, msg)
             BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] += len(read)
-            self.clean_buffer(self.operation)
+            self.clean_buffer()
 
     def __none_all_data(self):
         """

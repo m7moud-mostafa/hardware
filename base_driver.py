@@ -116,9 +116,12 @@ class BaseDriver(LoggingMixin, ABC):
                 th = threading.Thread(target=lambda: statusContainer.append(self.threaded_send(msg)))
                 th.start()
                 th.join()
-                if not statusContainer[0]:
-                   self.__increment_msg_count()
-                return statusContainer[0]
+                if statusContainer:
+                    if not statusContainer[0]:
+                        self.__increment_msg_count()
+                    return statusContainer[0]
+                else:
+                    return 1
             except Exception as e:
                 self.log_error(e)
                 return 1 # failure
