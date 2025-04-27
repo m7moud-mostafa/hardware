@@ -103,7 +103,7 @@ class SerialSender(SerialBaseDriver):
             else:
                 self.log_error("Device disconnected, Retrying")
                 self._try_to_connect()
-        self.log_error(f"Failed to send data: {data} within timeout")
+        self.log_warning(f"Data {data} sending aborted: it exceeded the timeout")
         return 1
 
     def threaded_receive(self):
