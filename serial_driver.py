@@ -99,9 +99,6 @@ class SerialSender(SerialBaseDriver):
         self.log_warning(f"Data {data} sending aborted: it exceeded the timeout")
         return 1
 
-    def threaded_receive(self):
-        raise NotImplementedError("'SerialSender' object can't be used to receive messages")
-
     def central_receive(self):
         """Receives all the msgs from channel and adds it to the receivedMsgsBuffer"""
         raise NotImplementedError("'SerialSender' object can't be used to receive messages")

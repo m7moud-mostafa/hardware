@@ -157,11 +157,6 @@ class BaseDriver(LoggingMixin, ABC):
         """To be implemented in child class"""
         pass
 
-    # @abstractmethod
-    # def threaded_receive(self):
-    #     """To be implemented in child class"""
-    #     pass
-
     def __del__(self):
         """Ensure the serial connection is closed on deletion"""
         self.disconnect()
