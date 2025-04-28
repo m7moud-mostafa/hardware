@@ -6,109 +6,171 @@ Author: Mahmoud Mostafa
 Email: mah2002moud@gmail.com
 """
 
+import time
 import can
 from hardware.base_driver import BaseDriver
 
 class CANBaseDriver(BaseDriver):
     """General CAN base driver containing common functionalities"""
+    CANBUFFER = 1024  # threshold for buffer stats
 
-    def __init__(self, msgName, operation, msgID, extendedID=False, channel="can0", bitrate=250000, bustype='socketcan'):
-        super().__init__(msgName, operation, msgID)
-        self.channel = channel
-        self.extendedID = extendedID
-        self.bitrate = bitrate
-        self.bustype = bustype
-
-    @property
-    def bustype(self):
-        """Returns the bustype value"""
-        return self.__bustype
-
-    @bustype.setter
-    def bustype(self, value):
-        """Sets the bustype value"""
-        if not isinstance(value, str):
-            raise TypeError("'bustype' value must be of type (str)")
-        self.__bustype = value
-
-    @property
-    def bitrate(self):
-        """Returns the bitrate value"""
-        return self.__bitrate
-
-    @bitrate.setter
-    def bitrate(self, value):
-        """Sets the bitrate value"""
-        if not isinstance(value, int):
-            raise TypeError("'bitrate' value must be of type (int)")
-        if value <= 0:
-            raise ValueError("'bitrate' must have a positive value")
-        self.__bitrate = value
+    def __init__(
+        self,
+        msgName,
+        operation,
+        msgID,
+        channel="can0",
+        extendedID=False,
+        bitrate=250000,
+        bustype='socketcan',
+        timeout=5
+    ):
+        # set attributes before BaseDriver init (for connect())
+        self.__channel = channel
+        self.__extendedID = extendedID
+        self.__bitrate = bitrate
+        self.__bustype = bustype
+        super().__init__(msgName, operation, self.__channel, msgID, timeout)
+        # spawn the receive thread if needed
+        if operation == "receive":
+            self._set_central_receiver()
 
     @property
     def channel(self):
-        """Returns the channel value"""
         return self.__channel
-
-    @channel.setter
-    def channel(self, value):
-        """Sets the channel name value"""
-        if not isinstance(value, str):
-            raise TypeError("'channel' value must be of type (str)")
-        self.__channel = value
 
     @property
     def extendedID(self):
-        """Returns the extendedID value"""
         return self.__extendedID
 
-    @extendedID.setter
-    def extendedID(self, value):
-        """Sets the extendedID value"""
-        if not isinstance(value, bool):
-            raise TypeError("extendedID value must be of type (bool)")
-        self.__extendedID = value
+    @property
+    def bitrate(self):
+        return self.__bitrate
+
+    @property
+    def bustype(self):
+        return self.__bustype
+
+    def connect(self):
+        """Establish CAN bus connection"""
+        try:
+            self.bus = can.interface.Bus(
+                channel=self.__channel,
+                bustype=self.__bustype,
+                bitrate=self.__bitrate
+            )
+            self.log_connected(self.__channel)
+            return 0
+        except Exception as e:
+            self.log_warning(f"Failed to connect CAN bus {self.__channel}: {e}")
+            return 1
+
+    def disconnect(self):
+        """Close the CAN bus connection"""
+        try:
+            if hasattr(self, 'bus'):
+                self.bus.shutdown()
+        finally:
+            self.stop()
+
+    def clean_buffer(self):
+        """Reset buffer counters when thresholds exceeded"""
+        info = BaseDriver.channelsOperationsInfo[self.channel]
+        if info.get('sentInBuffer', 0) >= CANBaseDriver.CANBUFFER:
+            info['sentInBuffer'] = 0
+            self.log_info("CAN TX buffer counter reset")
+        if info.get('receivedInBuffer', 0) >= CANBaseDriver.CANBUFFER:
+            info['receivedInBuffer'] = 0
+            self.log_info("CAN RX buffer counter reset")
 
 class CANSender(CANBaseDriver):
     """CANSender class handles sending messages through CAN"""
 
-    def __init__(self, msgName, msgID, extendedID=False, channel="can0", bitrate=250000, bustype='socketcan'):
-        super().__init__(msgName, "send", msgID, extendedID, channel, bitrate, bustype)
-        self.bus = can.interface.Bus(channel=self.__channel, bustype=self.__bustype, bitrate=self.__bitrate)
+    def threaded_send(self, data):
+        """Send data over CAN with retry, logging, and stats"""
+        if not isinstance(data, (bytes, bytearray)):
+            raise TypeError("CAN data must be bytes or bytearray")
 
-    def send(self, data):
-        """Send a CAN message"""
-        try:
-            msg = can.Message(arbitration_id=self.__msgID, data=data, is_extended_id=self.__extendedID)
-            self.bus.send(msg)
-            print(f"Sent CAN message: ID={self.__msgID}, Data={data}")
-        except can.CanError as e:
-            print(f"Failed to send CAN message: {e}")
+        start = time.time()
+        while time.time() - start < self.timeout:
+            try:
+                msg = can.Message(
+                    arbitration_id=self.msgID,
+                    data=data,
+                    is_extended_id=self.extendedID
+                )
+                self.bus.send(msg)
+                # update stats
+                BaseDriver.channelsOperationsInfo[self.channel]['sentInBuffer'] += len(data)
+                self._BaseDriver__increment_msg_count()
+                self.log_sent(data)
+                return 0
+            except Exception as e:
+                self.log_error(f"CAN send error: {e}, retrying...")
+                # attempt reconnect
+                try:
+                    self.bus.shutdown()
+                except:
+                    pass
+                self._try_to_connect()
+        self.log_warning(f"CAN send aborted: timeout for data={data}")
+        return 1
 
-    def receive(self):
+    def central_receive(self):
         raise NotImplementedError("'CANSender' object can't be used to receive messages")
 
 class CANReceiver(CANBaseDriver):
     """CANReceiver class handles receiving messages through CAN"""
 
-    def __init__(self, msgName, msgID, extendedID=False, channel="can0", bitrate=250000, bustype='socketcan'):
-        super().__init__(msgName, "receive", msgID, extendedID, channel, bitrate, bustype)
-        self.__filter = [{
-            "can_id": self.__msgID, 
-            "can_mask": 0x7FF if not self.__extendedID else 0x1FFFFFFF, 
-            "extended": self.__extendedID
-        }]
-        self.bus = can.interface.Bus(channel=self.__channel, bustype=self.__bustype, bitrate=self.__bitrate, can_filters=self.__filter)
+    def __init__(
+        self,
+        msgName,
+        msgID,
+        channel="can0",
+        extendedID=False,
+        bitrate=250000,
+        bustype='socketcan',
+        timeout=5,
+        recv_timeout=1.0
+    ):
+        super().__init__(msgName, "receive", msgID, channel,
+                         extendedID, bitrate, bustype, timeout)
+        self.recv_timeout = recv_timeout
 
-    def receive(self):
-        """Receive a CAN message"""
-        msg = self.bus.recv(timeout=5.0)  # will wait 5 seconds for the messages before returning None
-        if msg:
-            print(f"Received CAN message: ID={msg.__arbitration_id}, Data={msg.data}")
-            return msg
-        else:
-            print("No CAN message received within timeout.")
-            return None
+    def __none_all_data(self):
+        """Prevent stale data by clearing buffers"""
+        for key in BaseDriver.receivedMsgsBuffer[self.channel]:
+            BaseDriver.receivedMsgsBuffer[self.channel][key] = None
 
-    def send(self):
+    def __handle_message(self, msg):
+        """Process and buffer incoming CAN message"""
+        if msg.arbitration_id == self.msgID:
+            payload = bytes(msg.data)
+            BaseDriver.receivedMsgsBuffer[self.channel][self.msgID] = payload
+            BaseDriver.channelsOperationsInfo[self.channel][self.operation][self.msgID] += 1
+            BaseDriver.channelsOperationsInfo[self.channel]['receivedInBuffer'] += len(payload)
+            self.clean_buffer()
+            self.log_received(self.msgID, payload)
+
+    def central_receive(self):
+        """Continuously read CAN messages and buffer them"""
+        while getattr(self, '_BaseDriver__isRunning', True):
+            try:
+                msg = self.bus.recv(timeout=self.recv_timeout)
+                if msg is None:
+                    continue
+                self.__handle_message(msg)
+            except Exception as e:
+                self.__none_all_data()
+                self.log_error(f"CAN receive error: {e}, retrying...")
+                try:
+                    self.bus.shutdown()
+                except:
+                    pass
+                self._try_to_connect()
+
+    def threaded_send(self, msg):
         raise NotImplementedError("'CANReceiver' object can't be used to send messages")
+
+if __name__ == "__main__":
+    pass
