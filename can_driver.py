@@ -29,14 +29,11 @@ class CANBaseDriver(BaseDriver):
         self.__extendedID = extendedID
         self.__bitrate = bitrate
         self.__bustype = bustype
-        super().__init__(msgName, operation, self.__channel, msgID, timeout)
+        super().__init__(msgName, operation, channel, msgID, timeout)
         # spawn the receive thread if needed
         if operation == "receive":
             self._set_central_receiver()
 
-    @property
-    def channel(self):
-        return self.__channel
 
     @property
     def extendedID(self):
@@ -54,14 +51,14 @@ class CANBaseDriver(BaseDriver):
         """Establish CAN bus connection"""
         try:
             self.bus = can.interface.Bus(
-                channel=self.__channel,
+                channel=self.channel,
                 bustype=self.__bustype,
                 bitrate=self.__bitrate
             )
-            self.log_connected(self.__channel)
+            self.log_connected(self.channel)
             return 0
         except Exception as e:
-            self.log_warning(f"Failed to connect CAN bus {self.__channel}: {e}")
+            self.log_warning(f"Failed to connect CAN bus {self.channel}: {e}")
             return 1
 
     def disconnect(self):
