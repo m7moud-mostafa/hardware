@@ -21,13 +21,13 @@ class CANBaseDriver(BaseDriver):
         msgID,
         channel="can0",
         extendedID=False,
-        bitrate=250000,
+        baudrate=250000,
         bustype='socketcan',
         timeout=5
     ):
         # set attributes before BaseDriver init (for connect())
         self.__extendedID = extendedID
-        self.__bitrate = bitrate
+        self.__baudrate = baudrate
         self.__bustype = bustype
         super().__init__(msgName, operation, channel, msgID, timeout)
         # spawn the receive thread if needed
@@ -40,8 +40,8 @@ class CANBaseDriver(BaseDriver):
         return self.__extendedID
 
     @property
-    def bitrate(self):
-        return self.__bitrate
+    def baudrate(self):
+        return self.__baudrate
 
     @property
     def bustype(self):
@@ -53,7 +53,7 @@ class CANBaseDriver(BaseDriver):
             self.bus = can.interface.Bus(
                 channel=self.channel,
                 bustype=self.__bustype,
-                bitrate=self.__bitrate
+                baudrate=self.__baudrate
             )
             self.log_connected(self.channel)
             return 0
@@ -79,7 +79,7 @@ class CANSender(CANBaseDriver):
         msgID,
         channel="can0",
         extendedID=False,
-        bitrate=250000,
+        baudrate=250000,
         bustype='socketcan',
         timeout=5
     ):
@@ -89,7 +89,7 @@ class CANSender(CANBaseDriver):
             msgID,
             channel,
             extendedID,
-            bitrate,
+            baudrate,
             bustype,
             timeout
         )
@@ -136,13 +136,13 @@ class CANReceiver(CANBaseDriver):
         msgID,
         channel="can0",
         extendedID=False,
-        bitrate=250000,
+        baudrate=250000,
         bustype='socketcan',
         timeout=5,
         recv_timeout=1.0
     ):
         super().__init__(msgName, "receive", msgID, channel,
-                         extendedID, bitrate, bustype, timeout)
+                         extendedID, baudrate, bustype, timeout)
         self.recv_timeout = recv_timeout
 
     def __none_all_data(self):
