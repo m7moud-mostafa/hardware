@@ -26,7 +26,6 @@ class CANBaseDriver(BaseDriver):
         timeout=5
     ):
         # set attributes before BaseDriver init (for connect())
-        self.__channel = channel
         self.__extendedID = extendedID
         self.__bitrate = bitrate
         self.__bustype = bustype
