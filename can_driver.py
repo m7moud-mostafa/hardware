@@ -75,17 +75,29 @@ class CANBaseDriver(BaseDriver):
 
     def clean_buffer(self):
         """Reset buffer counters when thresholds exceeded"""
-        info = BaseDriver.channelsOperationsInfo[self.channel]
-        if info.get('sentInBuffer', 0) >= CANBaseDriver.CANBUFFER:
-            info['sentInBuffer'] = 0
-            self.log_info("CAN TX buffer counter reset")
-        if info.get('receivedInBuffer', 0) >= CANBaseDriver.CANBUFFER:
-            info['receivedInBuffer'] = 0
-            self.log_info("CAN RX buffer counter reset")
+        pass
 
 class CANSender(CANBaseDriver):
     """CANSender class handles sending messages through CAN"""
-
+    def __init__(self, msgName,
+        msgID,
+        channel="can0",
+        extendedID=False,
+        bitrate=250000,
+        bustype='socketcan',
+        timeout=5
+    ):
+        super().__init__(
+            msgName,
+            'send',
+            msgID,
+            channel,
+            extendedID,
+            bitrate,
+            bustype,
+            timeout
+        )
+        
     def threaded_send(self, data):
         """Send data over CAN with retry, logging, and stats"""
         if not isinstance(data, (bytes, bytearray)):
