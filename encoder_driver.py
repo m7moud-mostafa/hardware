@@ -30,7 +30,7 @@ class EncoderDriver(HighLevelBaseReceiver):
         if raw is None:
             return None
 
-        if len(raw) < 24:
+        if len(raw) < expected_length:
             raise MsgLengthError(f"Expected {expected_length} bytes, got {len(raw) if raw else 0}.")
 
         try:

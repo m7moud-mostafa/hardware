@@ -8,6 +8,9 @@ Email: mah2002moud@gmail.com
 from hardware.serial_driver import SerialReceiver
 from hardware.can_driver import CANReceiver
 
+class MsgLengthError(Exception):
+    """Custom exception for message length errors."""
+    pass
 
 class HighLevelBaseReceiver:
     def __init__(
@@ -44,6 +47,7 @@ class HighLevelBaseReceiver:
 class HighLevelBaseSender:
     def __init__(
         self,
+        protocol,
         msgName,
         msgID,
         channel,
