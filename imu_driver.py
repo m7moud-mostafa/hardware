@@ -17,7 +17,7 @@ class IMUCANDriver:
     def __init__(
         self,
         msgName: str,
-        msgID: list[int],
+        msgIDs: list,
         channel="can0",
         extendedID=False,
         baudrate=500000,
@@ -26,7 +26,7 @@ class IMUCANDriver:
         recv_timeout=1.0
     ):
         self.msgName = msgName
-        self.msgID = msgID
+        self.msgIDs = msgIDs
 
         self.msgNames = [f'{msgName}_ax',
                     f'{msgName}_ay',
@@ -34,7 +34,6 @@ class IMUCANDriver:
                     f'{msgName}_gx',
                     f'{msgName}_gy',
                     f'{msgName}_gz']
-        self.msgIDs = [msgID[0], msgID[1], msgID[2], msgID[3], msgID[4], msgID[5]]
 
         self.drivers = []
         for i in range(6):
@@ -51,16 +50,16 @@ class IMUCANDriver:
             self.drivers.append(driver)
 
     @property
-    def msgID(self):
-        return self._msgID
+    def msgIDs(self):
+        return self._msgIDs
 
     @msgID.setter
-    def msgID(self, value):
+    def msgIDs(self, value):
         if not hasattr(value, '__iter__') or not all(isinstance(i, int) for i in value):
             raise ValueError("msgID must be an iterable containing integers")
         if len(value) != 6:
             raise ValueError("msgID must contain exactly 6 integers")
-        self._msgID = list(value)
+        self._msgIDs = list(value)
 
     def receive(self, float_size: int = 8, endianess: str = 'little'):
         """
