@@ -7,24 +7,101 @@ Email: mah2002moud@gmail.com
 """
 
 import struct
-from hardware.high_level_base_driver import HighLevelBaseReceiver
+from hardware.can_driver import CANReceiver
+from hardware.serial_driver import SerialReceiver
 
-class IMUDriver(HighLevelBaseReceiver):
-    def receive(self):
-        """
-        Returns:
-            Tuple[float, float, float, float, float, float] or None:
-            (ax, ay, az, gx, gy, gz)
-        """
-        raw = self.driver.receive()
-        if raw is None:
-            return None
+class IMUCANDriver:
+    """
+    IMU driver to handle IMU data reception over CAN bus
+    """
+    def __init__(
+        self,
+        msgName: str,
+        msgID: list[int],
+        channel="can0",
+        extendedID=False,
+        baudrate=500000,
+        bustype='socketcan',
+        timeout=5,
+        recv_timeout=1.0
+    ):
+        self.msgName = msgName
+        self.msgID = msgID
 
-        if len(raw) < 24:
-            raise MsgLengthError("The imu msg should be 24 bytes")
+        self.msgNames = [f'{msgName}_ax',
+                    f'{msgName}_ay',
+                    f'{msgName}_az',
+                    f'{msgName}_gx',
+                    f'{msgName}_gy',
+                    f'{msgName}_gz']
+        self.msgIDs = [msgID[0], msgID[1], msgID[2], msgID[3], msgID[4], msgID[5]]
+
+        self.drivers = []
+        for i in range(6):
+            driver = CANReceiver(
+                msgName=self.msgNames[i],
+                msgID=[self.msgIDs[i]],
+                channel=channel,
+                extendedID=extendedID,
+                baudrate=baudrate,
+                bustype=bustype,
+                timeout=timeout,
+                recv_timeout=recv_timeout
+            )
+            self.drivers.append(driver)
+
+    @property
+    def msgID(self):
+        return self._msgID
+
+    @msgID.setter
+    def msgID(self, value):
+        if not hasattr(value, '__iter__') or not all(isinstance(i, int) for i in value):
+            raise ValueError("msgID must be an iterable containing integers")
+        if len(value) != 6:
+            raise ValueError("msgID must contain exactly 6 integers")
+        self._msgID = list(value)
+
+    def receive(self, float_size: int = 8, endianess: str = 'little'):
+        """
+        Receive data from the IMU
+        """
+        # User input validation
+        if not isinstance(float_size, int):
+            return ValueError("float_size must be an integer")
+        if float_size not in [4, 8]:
+            return ValueError("float_size must be either 4 or 8")
+
+        if not isinstance(endianess, str):
+            return ValueError("endianess must be a string")
+        if endianess not in ['little', 'big']:
+            return ValueError("endianess must be either 'little' or 'big'")
+
+        # Build struct format
+        fmt_char = 'f' if float_size == 4 else 'd'
+        prefix = '<' if endianess == 'little' else '>'
+
+        # Receive raw data
+        data = []
+        for driver in self.drivers:
+            raw = driver.receive()
+            if raw is not None and len(raw) != float_size:
+                raise ValueError(
+                    f"Received data for '{driver.msgName}' is {len(raw)} bytes, "
+                    f"expected {float_size}"
+                )
+            data.append(raw)
+
+        # Unpack
+        unpacked = []
         try:
-            return list(struct.unpack("!6f", raw[:24]))
+            for raw in data:
+                if raw is None:
+                    unpacked.append(None)
+                else:
+                    val = struct.unpack(prefix + fmt_char, raw)[0]
+                    unpacked.append(val)
         except struct.error as e:
-            self.driver.log_error(f"Struct unpack error: {e}")
-            return None
+            raise ValueError(f"Error unpacking IMU data: {e}")
 
+        return tuple(unpacked)

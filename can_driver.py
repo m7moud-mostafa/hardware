@@ -99,6 +99,9 @@ class CANSender(CANBaseDriver):
         if not isinstance(data, (bytes, bytearray)):
             raise TypeError("CAN data must be bytes or bytearray")
 
+        if len(data) > 8:
+            raise ValueError(f"Can't send data of legnth {len(data)}: CAN data must be 8 bytes or less")
+
         start = time.time()
         while time.time() - start < self.timeout:
             try:
