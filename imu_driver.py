@@ -134,23 +134,27 @@ class IMUSerialDriver(SerialReceiver):
 
         # Receive raw data
         raw = super().receive()
-        if raw and len(raw) != total_data_length:
-            raise ValueError(
-                f"Received data for '{self.msgName}' is {len(raw)} bytes, "
-                f"expected {total_data_length}"
-            )
+        if raw:
+            if len(raw) != total_data_length:
+                raise ValueError(
+                    f"Received data for '{self.msgName}' is {len(raw)} bytes, "
+                    f"expected {total_data_length}"
+                )
 
-        # Unpack
-        unpacked = []
-        try:
-            unpacked = struct.unpack(prefix + fmt_char * 6, raw)
-        except struct.error as e:
-            raise ValueError(f"Error unpacking IMU data: {e}")
+            # Unpack
+            unpacked = []
+            try:
+                unpacked = struct.unpack(prefix + fmt_char * 6, raw)
+            except struct.error as e:
+                raise ValueError(f"Error unpacking IMU data: {e}")
 
-        return tuple(unpacked)
+            return tuple(unpacked)
+        else:
+            return None
 
 if __name__ == "__main__":
     import sys
+    import time
 
     if len(sys.argv) < 2:
         print("Usage: python3 -m hardware.imu_driver <can|serial>")
@@ -184,11 +188,18 @@ if __name__ == "__main__":
 
     try:
         while True:
-            if arg == "can":
-                data = imu_driver.receive(float_size=8, endianess='little')
-            elif arg == "serial":
-                data = imu_driver.receive(float_size=4, endianess='little')
-            print("Received IMU data:", data)
+            time.sleep(0.5)
+            try:
+                if arg == "can":
+                    data = imu_driver.receive(float_size=8, endianess='little')
+                elif arg == "serial":
+                    data = imu_driver.receive(float_size=4, endianess='little')
+                if data:
+                    print("Received IMU data:", data)
+            except ValueError as e:
+                print(f"Error: {e}")
+
+
     except KeyboardInterrupt:
         print("\nExiting...")
         sys.exit(0)
