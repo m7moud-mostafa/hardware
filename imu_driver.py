@@ -39,7 +39,7 @@ class IMUCANDriver:
         for i in range(6):
             driver = CANReceiver(
                 msgName=self.msgNames[i],
-                msgID=[self.msgIDs[i]],
+                msgID=self.msgIDs[i],
                 channel=channel,
                 extendedID=extendedID,
                 baudrate=baudrate,
@@ -187,7 +187,6 @@ if __name__ == "__main__":
 
     try:
         while True:
-            time.sleep(0.5)
             try:
                 if arg == "can":
                     data = imu_driver.receive(float_size=8, endianess='little')
