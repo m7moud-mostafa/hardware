@@ -148,3 +148,47 @@ class IMUSerialDriver(SerialReceiver):
             raise ValueError(f"Error unpacking IMU data: {e}")
 
         return tuple(unpacked)
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python3 -m hardware.imu_driver <can|serial>")
+        sys.exit(1)
+
+    arg = sys.argv[1].lower()
+
+    if arg == "can":
+        imu_driver = IMUCANDriver(
+            msgName="imu",
+            msgID=[0x200, 0x201, 0x202, 0x203, 0x204, 0x205],
+            channel="can0",
+            extendedID=False,
+            baudrate=500000,
+            bustype='socketcan',
+            timeout=5,
+            recv_timeout=1.0
+        )
+    elif arg == "serial":
+        imu_driver = IMUSerialDriver(
+            msgName="imu",
+            msgID=0x10,
+            msgIDLength=1,
+            channel="/dev/ttyACM0",
+            baudrate=9600,
+            timeout=5
+        )
+    else:
+        print("Invalid argument. Use 'can' or 'serial'.")
+        sys.exit(1)
+
+    try:
+        while True:
+            if arg == "can":
+                data = imu_driver.receive(float_size=8, endianess='little')
+            elif arg == "serial":
+                data = imu_driver.receive(float_size=4, endianess='little')
+            print("Received IMU data:", data)
+    except KeyboardInterrupt:
+        print("\nExiting...")
+        sys.exit(0)
