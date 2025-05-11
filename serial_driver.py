@@ -113,7 +113,7 @@ class SerialReceiver(SerialBaseDriver):
         if read:
             if self.msgIDLength:
                 try:
-                    id = int.from_bytes(read[:self.msgIDLength])
+                    id = int.from_bytes(read[:self.msgIDLength], 'little')
                     if id in BaseDriver.receivedMsgsBuffer[self.channel]:
                         msg = read[self.msgIDLength:-1]
                         BaseDriver.receivedMsgsBuffer[self.channel][id] = msg

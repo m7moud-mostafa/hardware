@@ -68,14 +68,14 @@ class IMUCANDriver:
         """
         # User input validation
         if not isinstance(float_size, int):
-            return ValueError("float_size must be an integer")
+            raise ValueError("float_size must be an integer")
         if float_size not in [4, 8]:
-            return ValueError("float_size must be either 4 or 8")
+            raise ValueError("float_size must be either 4 or 8")
 
         if not isinstance(endianess, str):
-            return ValueError("endianess must be a string")
+            raise ValueError("endianess must be a string")
         if endianess not in ['little', 'big']:
-            return ValueError("endianess must be either 'little' or 'big'")
+            raise ValueError("endianess must be either 'little' or 'big'")
 
         # Build struct format
         fmt_char = 'f' if float_size == 4 else 'd'
@@ -101,6 +101,49 @@ class IMUCANDriver:
                 else:
                     val = struct.unpack(prefix + fmt_char, raw)[0]
                     unpacked.append(val)
+        except struct.error as e:
+            raise ValueError(f"Error unpacking IMU data: {e}")
+
+        return tuple(unpacked)
+
+class IMUSerialDriver(SerialReceiver):
+    """
+    IMU driver to handle IMU data reception over serial
+    """
+
+    def receive(self, float_size: int = 4, endianess: str = 'little'):
+        """
+        Receive data from the IMU
+        """
+        # User input validation
+        if not isinstance(float_size, int):
+            raise ValueError("float_size must be an integer")
+        if float_size not in [4, 8]:
+            raise ValueError("float_size must be either 4 or 8")
+
+        if not isinstance(endianess, str):
+            raise ValueError("endianess must be a string")
+        if endianess not in ['little', 'big']:
+            raise ValueError("endianess must be either 'little' or 'big'")
+
+        total_data_length = float_size * 6
+
+        # Build struct format
+        fmt_char = 'f' if float_size == 4 else 'd'
+        prefix = '<' if endianess == 'little' else '>'
+
+        # Receive raw data
+        raw = super().receive()
+        if raw and len(raw) != total_data_length:
+            raise ValueError(
+                f"Received data for '{self.msgName}' is {len(raw)} bytes, "
+                f"expected {total_data_length}"
+            )
+
+        # Unpack
+        unpacked = []
+        try:
+            unpacked = struct.unpack(prefix + fmt_char * 6, raw)
         except struct.error as e:
             raise ValueError(f"Error unpacking IMU data: {e}")
 
