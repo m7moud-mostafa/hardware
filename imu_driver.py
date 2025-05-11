@@ -9,6 +9,7 @@ Email: mah2002moud@gmail.com
 import struct
 from hardware.can_driver import CANReceiver
 from hardware.serial_driver import SerialReceiver
+from hardware.base_driver import MsgLengthError
 
 class IMUCANDriver:
     """
@@ -85,7 +86,7 @@ class IMUCANDriver:
         for driver in self.drivers:
             raw = driver.receive()
             if raw is not None and len(raw) != float_size:
-                raise ValueError(
+                raise MsgLengthError(
                     f"Received data for '{driver.msgName}' is {len(raw)} bytes, "
                     f"expected {float_size}"
                 )
@@ -101,7 +102,9 @@ class IMUCANDriver:
                     val = struct.unpack(prefix + fmt_char, raw)[0]
                     unpacked.append(val)
         except struct.error as e:
-            raise ValueError(f"Error unpacking IMU data: {e}")
+            self.drivers[0].log_error(f"Error unpacking IMU data: {e}")
+            return None
+
 
         return tuple(unpacked)
 
@@ -135,7 +138,7 @@ class IMUSerialDriver(SerialReceiver):
         raw = super().receive()
         if raw:
             if len(raw) != total_data_length:
-                raise ValueError(
+                raise MsgLengthError(
                     f"Received data for '{self.msgName}' is {len(raw)} bytes, "
                     f"expected {total_data_length}"
                 )
@@ -145,7 +148,8 @@ class IMUSerialDriver(SerialReceiver):
             try:
                 unpacked = struct.unpack(prefix + fmt_char * 6, raw)
             except struct.error as e:
-                raise ValueError(f"Error unpacking IMU data: {e}")
+                self.log_error(f"Error unpacking IMU data: {e}")
+                return None
 
             return tuple(unpacked)
         else:

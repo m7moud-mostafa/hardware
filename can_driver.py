@@ -8,7 +8,7 @@ Email: mah2002moud@gmail.com
 
 import time
 import can
-from hardware.base_driver import BaseDriver
+from hardware.base_driver import BaseDriver, MsgLengthError
 
 class CANBaseDriver(BaseDriver):
     """General CAN base driver containing common functionalities"""
@@ -100,7 +100,7 @@ class CANSender(CANBaseDriver):
             raise TypeError("CAN data must be bytes or bytearray")
 
         if len(data) > 8:
-            raise ValueError(f"Can't send data of legnth {len(data)}: CAN data must be 8 bytes or less")
+            raise MsgLengthError(f"Can't send data of legnth {len(data)}: CAN data must be 8 bytes or less")
 
         start = time.time()
         while time.time() - start < self.timeout:

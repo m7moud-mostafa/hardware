@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 BaseDriver class to handle hardware communication with logging.
-
+MsgLengthError is a custom exception for message length errors.
 Author: Mahmoud Mostafa
 Email: mah2002moud@gmail.com
 """
@@ -10,6 +10,10 @@ from abc import ABC, abstractmethod
 from hardware.logging_mixin import LoggingMixin
 import threading
 import time
+
+class MsgLengthError(Exception):
+    """Custom exception for message length errors."""
+    pass
 
 class BaseDriver(LoggingMixin, ABC):
     """
