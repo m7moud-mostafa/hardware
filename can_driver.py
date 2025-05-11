@@ -152,13 +152,13 @@ class CANReceiver(CANBaseDriver):
 
     def __handle_message(self, msg):
         """Process and buffer incoming CAN message"""
-        if msg.arbitration_id == self.msgID:
+        msg_id = msg.arbitration_id
+        if msg_id in BaseDriver.receivedMsgsBuffer[self.channel]:
             payload = bytes(msg.data)
-            BaseDriver.receivedMsgsBuffer[self.channel][self.msgID] = payload
-            BaseDriver.channelsOperationsInfo[self.channel][self.operation][self.msgID] += 1
+            BaseDriver.receivedMsgsBuffer[self.channel][msg_id] = payload
+            BaseDriver.channelsOperationsInfo[self.channel][self.operation][msg_id] += 1
             BaseDriver.channelsOperationsInfo[self.channel]['receivedInBuffer'] += len(payload)
-            self.clean_buffer()
-            self.log_received(self.msgID, payload)
+            self.log_received(msg_id, payload)
 
     def central_receive(self):
         """Continuously read CAN messages and buffer them"""
