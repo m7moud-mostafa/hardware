@@ -53,7 +53,7 @@ class IMUCANDriver:
     def msgIDs(self):
         return self._msgIDs
 
-    @msgID.setter
+    @msgIDs.setter
     def msgIDs(self, value):
         if not hasattr(value, '__iter__') or not all(isinstance(i, int) for i in value):
             raise ValueError("msgID must be an iterable containing integers")
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     if arg == "can":
         imu_driver = IMUCANDriver(
             msgName="imu",
-            msgID=[0x200, 0x201, 0x202, 0x203, 0x204, 0x205],
+            msgIDs=[0x200, 0x201, 0x202, 0x203, 0x204, 0x205],
             channel="can0",
             extendedID=False,
             baudrate=500000,
