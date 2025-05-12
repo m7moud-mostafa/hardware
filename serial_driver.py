@@ -83,7 +83,8 @@ class SerialSender(SerialBaseDriver):
         while time.time() - start_time < self.timeout:
             if self.serial_conn and self.serial_conn.is_open:
                 try:
-                    payload = (self.msgID.to_bytes(self.msgIDLength, 'big') + data) if self.msgIDLength else data
+                    payload = (self.msgID.to_bytes(self.msgIDLength, 'little') + data) if self.msgIDLength else data
+                    payload = payload + b'\n'
                     self.clean_buffer()
                     self.serial_conn.write(payload)
                     BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] += len(payload)
