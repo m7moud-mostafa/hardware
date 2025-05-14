@@ -42,12 +42,12 @@ class SerialBaseDriver(BaseDriver):
             if self.operation == "send":
                 if BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                     self.serial_conn.reset_input_buffer()
-                    self.log_info("TX Buffer Cleaned.......")
+                    # self.log_info("TX Buffer Cleaned.......")
                     BaseDriver.channelsOperationsInfo[self.channel]["sentInBuffer"] = 0
             else:
                 if BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] >= SerialBaseDriver.SERIALBUFFER:
                     self.serial_conn.reset_output_buffer()
-                    self.log_info("RX Buffer Cleaned.......")
+                    # self.log_info("RX Buffer Cleaned.......")
                     BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] = 0
 
     @property
@@ -83,7 +83,7 @@ class SerialSender(SerialBaseDriver):
         while time.time() - start_time < self.timeout:
             if self.serial_conn and self.serial_conn.is_open:
                 try:
-                    payload = (self.msgID.to_bytes(self.msgIDLength, 'little') + data) if self.msgIDLength else data
+                    payload = (self.msgID.to_bytes(self.msgIDLength, 'little') + len(data).to_bytes(1, 'little') + data) if self.msgIDLength else data
                     payload = payload + b'\n'
                     self.clean_buffer()
                     self.serial_conn.write(payload)
@@ -110,24 +110,42 @@ class SerialReceiver(SerialBaseDriver):
         super().__init__(msgName, "receive", channel, msgID, msgIDLength, baudrate, timeout)
 
     def __handle_received_msg(self, read):
-        """handles the msg received by serial including id extraction"""
-        if read:
-            if self.msgIDLength:
-                try:
-                    id = int.from_bytes(read[:self.msgIDLength], 'little')
-                    if id in BaseDriver.receivedMsgsBuffer[self.channel]:
-                        msg = read[self.msgIDLength:-1]
-                        BaseDriver.receivedMsgsBuffer[self.channel][id] = msg
-                        BaseDriver.channelsOperationsInfo[self.channel][self.operation][id] += 1
-                        self.log_received(id, msg)
-                except Exception as e:
-                    self.log_error(e)
-            else:
-                msg = read[:-1]
-                BaseDriver.receivedMsgsBuffer[self.channel][self.msgID] = msg
-                BaseDriver.channelsOperationsInfo[self.channel][self.operation][self.msgID] += 1
-                self.log_received(self.msgID, msg)
-            BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] += len(read)
+        """Handles the msg received by serial including id and length extraction"""
+        if not read:
+            return
+
+        if self.msgIDLength:
+            try:
+                # Extract ID and length
+                id = int.from_bytes(read[:self.msgIDLength], 'little')
+                msg_length = int.from_bytes(read[self.msgIDLength:self.msgIDLength + 1], 'little')
+                msg = read[self.msgIDLength + 1:]
+
+                # Keep reading until we have the full payload (msg_length) + '\n'
+                while len(msg) < msg_length + 1:  # +1 for '\n'
+                    more = self.serial_conn.readline()
+                    if not more:
+                        self.log_warning(f"Incomplete message for id {id}, aborting")
+                        return
+                    msg += more
+
+                # Remove trailing newline
+                payload = msg[:msg_length]
+                if id in BaseDriver.receivedMsgsBuffer[self.channel]:
+                    BaseDriver.receivedMsgsBuffer[self.channel][id] = payload
+                    BaseDriver.channelsOperationsInfo[self.channel][self.operation][id] += 1
+                    self.log_received(id, payload)
+                BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] += self.msgIDLength + 1 + msg_length
+                self.clean_buffer()
+            except Exception as e:
+                self.log_error(e)
+        else:
+            # No ID, just store the message (excluding newline)
+            msg = read[:-1]
+            BaseDriver.receivedMsgsBuffer[self.channel][self.msgID] = msg
+            BaseDriver.channelsOperationsInfo[self.channel][self.operation][self.msgID] += 1
+            self.log_received(self.msgID, msg)
+            BaseDriver.channelsOperationsInfo[self.channel]["receivedInBuffer"] += len(msg) + 1
             self.clean_buffer()
 
     def __none_all_data(self):

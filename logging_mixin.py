@@ -105,7 +105,7 @@ class LoggingMixin:
         self.logger.warning(f"Warning msg [{self.numOfMsgs}]: channel={self.msgName}, status={self._BaseDriver__isRunning}, warning={warning_msg}")
 
     def log_sent(self, message):
-        self.logger.info(f"Sent msg [{self.numOfMsgs}]: channel={self.msgName}, msgID={self.msgID} message={message}, status={self._BaseDriver__isRunning}")
+        self.logger.info(f"Sent msg [{self.numOfMsgs}]: channel={self.msgName}, msgID={f"0x{self.msgID:02X}"} message={message}, status={self._BaseDriver__isRunning}")
 
     def log_received(self, msg_id, message):
         # Get the BaseDriver class from the instance
@@ -125,7 +125,7 @@ class LoggingMixin:
         self.logger.info(
             f"Received msg [{numOfMsgs}]: "
             f"channel={channel_name}, "
-            f"msgID={msg_id}, "
+            f"msgID=0x{msg_id:02x}, "
             f"message={message}, "
             f"status={self._BaseDriver__isRunning}"
         )
